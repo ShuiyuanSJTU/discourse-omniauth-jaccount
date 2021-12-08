@@ -1,0 +1,5 @@
+plugins:
+  jaccount_app_id:
+    default: ""
+  jaccount_secret:
+    default: ""

@@ -1,0 +1,4 @@
+zh_CN:
+  site_settings:
+    jaccount_app_id: "jAccount App Id 留空将读取环境变量 JACCOUNT_APP_ID"
+    jaccount_secret: "jAccount Secret 留空将读取环境变量 JACCOUNT_SECRET"
