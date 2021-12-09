@@ -3,7 +3,7 @@
 # version: 0.0.1
 # authors: Rong Cai(feynixs)
 
-gem 'omniauth-jaccount', '0.1.5'
+gem 'omniauth-jaccount', '0.1.3'
 
 class JAccountAuthenticator < ::Auth::Authenticator
 
@@ -56,9 +56,9 @@ class JAccountAuthenticator < ::Auth::Authenticator
 
   def register_middleware(omniauth)
     omniauth.provider :jaccount,
-    SiteSetting.jaccount_app_id != "" ? SiteSetting.jaccount_app_id : ENV['JACCOUNT_APP_ID'],
-    SiteSetting.jaccount_secret != "" ? SiteSetting.jaccount_secret : ENV['JACCOUNT_SECRET'],
-    scope: 'basic'
+    client_id: ENV["JACCOUNT_APP_ID"],
+    client_secret: ENV["JACCOUNT_SECRET"],
+    scope: "basic"
 
   end
 
