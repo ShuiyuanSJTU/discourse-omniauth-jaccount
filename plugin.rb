@@ -73,7 +73,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
 
   # can exising discourse users connect this provider to their accounts
   def can_connect_existing_user?
-    true
+    false
   end
 end
 
