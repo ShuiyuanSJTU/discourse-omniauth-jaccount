@@ -64,7 +64,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
   end
 
   def description_for_user(user)
-    ""
+    UserEmail.where(user: user).fisrt.email.split('@')[0]
   end
 
   # can authorisation for this provider be revoked?
