@@ -23,7 +23,8 @@ class JAccountAuthenticator < ::Auth::Authenticator
     name = screen_name = data["name"]
     ja_uid = auth_token["uid"]
     email = data["email"]
-
+    ja_uid = email if ja_uid&.strip == ""
+    
     # Plugin specific data storage
     current_info = ::PluginStore.get("auth-jaccount", "ja_uid_#{ja_uid}")
 
