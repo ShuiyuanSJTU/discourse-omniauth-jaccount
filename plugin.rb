@@ -24,7 +24,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
     ja_uid = auth_token["uid"]
     email = data["email"]
     ja_uid = email if ja_uid&.strip == ""
-    
+
     # Plugin specific data storage
     current_info = ::PluginStore.get("auth-jaccount", "ja_uid_#{ja_uid}")
 
@@ -64,7 +64,11 @@ class JAccountAuthenticator < ::Auth::Authenticator
   end
 
   def description_for_user(user)
-    UserEmail.where(user: user).fisrt.email.split('@')[0]
+    # row = PluginStoreRow.where(plugin_name: "auth-jaccount", value: `{\"user_id\":#{user.id}}`).first
+    # if row
+    #   return row.key
+    # end
+    ""
   end
 
   # can authorisation for this provider be revoked?
