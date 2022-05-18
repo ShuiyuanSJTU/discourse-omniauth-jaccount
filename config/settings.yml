@@ -1,0 +1,4 @@
+login:
+  jaccount_auth_enabled:
+    default: true
+    client: true
