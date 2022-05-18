@@ -95,4 +95,12 @@ after_initialize do
       row.destroy
     end
   end
+
+  on(:user_anonymized) do |**args|   
+    user_id = args[:user].id
+    row = PluginStoreRow.find_by(plugin_name: PLUGIN_NAME, value: { user_id: user_id }.to_json)
+    if row
+      row.destroy
+    end
+  end
 end
