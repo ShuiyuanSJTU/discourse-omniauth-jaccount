@@ -27,21 +27,24 @@ class JAccountAuthenticator < ::Auth::Authenticator
     ja_uid = auth_token["uid"]
     email = data["email"]
     ja_uid = email if ja_uid&.strip == ""
+    account_name = data["account"]
 
     # Plugin specific data storage
-    current_info = ::PluginStore.get(PLUGIN_NAME, "ja_uid_#{ja_uid}")
+    current_info = UserCustomField.find_by(name: PLUGIN_NAME, value: ja_uid)
 
     # Check if the user is trying to connect an existing account
     unless current_info
+      # try to find by email
       existing_user = User.joins(:user_emails).find_by(user_emails: { email: email })
       if existing_user
-        ::PluginStore.set(PLUGIN_NAME, "ja_uid_#{ja_uid}", { user_id: existing_user.id })
         result.user = existing_user
+        existing_user.custom_fields[PLUGIN_NAME] = ja_uid
+        existing_user.save_custom_fields
       end
-    else
-      result.user = User.where(id: current_info[:user_id]).first
+    else # existing user
+      result.user = User.find_by(id: current_info.user_id)
     end
-    account_name = email.split("@")[0]
+    
     result.name ||= account_name
     result.username = account_name
     result.email ||= email
@@ -55,7 +58,8 @@ class JAccountAuthenticator < ::Auth::Authenticator
 
   def after_create_account(user, auth)
     data = auth[:extra_data]
-    ::PluginStore.set(PLUGIN_NAME, "ja_uid_#{data[:jaccount_uid]}", { user_id: user.id })
+    user.custom_fields[PLUGIN_NAME] = data[:jaccount_uid]
+    user.save_custom_fields
   end
 
   def register_middleware(omniauth)
@@ -67,11 +71,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
   end
 
   def description_for_user(user)
-    # row = PluginStoreRow.where(plugin_name: "auth-jaccount", value: `{\"user_id\":#{user.id}}`).first
-    # if row
-    #   return row.key
-    # end
-    ""
+    "jAccount"
   end
 
   # can authorisation for this provider be revoked?
@@ -89,18 +89,5 @@ auth_provider title: 'with jAccount',
               authenticator: JAccountAuthenticator.new
 
 after_initialize do
-  on(:user_destroyed) do |user|
-    row = PluginStoreRow.find_by(plugin_name: PLUGIN_NAME, value: { user_id: user.id }.to_json)
-    if row
-      row.destroy
-    end
-  end
-
-  on(:user_anonymized) do |**args|   
-    user_id = args[:user].id
-    row = PluginStoreRow.find_by(plugin_name: PLUGIN_NAME, value: { user_id: user_id }.to_json)
-    if row
-      row.destroy
-    end
-  end
+  User.register_custom_field_type PLUGIN_NAME, :string
 end
