@@ -5,7 +5,7 @@ class MoveToCustomFields < ActiveRecord::Migration[7.0]
     rows.each do |row|
       ja_uid = row.key
       ja_uid = ja_uid[9, ja_uid.length]
-      user_id = JSON.parse(row.value).user_id
+      user_id = JSON.parse(row.value)["user_id"]
       user = User.find_by(id: user_id)
       if user
         user.custom_fields[plugin_name] = ja_uid
