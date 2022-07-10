@@ -27,7 +27,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
     ja_uid = auth_token["uid"]
     email = data["email"]
     ja_uid = email if ja_uid&.strip == ""
-    account_name = data["account"]
+    account_name = email.split("@")[0]
 
     # Plugin specific data storage
     current_info = UserCustomField.find_by(name: PLUGIN_NAME, value: ja_uid)
@@ -35,7 +35,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
     # Check if the user is trying to connect an existing account
     unless current_info
       # try to find by email
-      existing_user = User.joins(:user_emails).find_by(user_emails: { email: email })
+      existing_user = User.joins(:user_emails).find_by(user_emails: { email: email.downcase })
       if existing_user
         result.user = existing_user
         existing_user.custom_fields[PLUGIN_NAME] = ja_uid
@@ -71,7 +71,12 @@ class JAccountAuthenticator < ::Auth::Authenticator
   end
 
   def description_for_user(user)
-    "jAccount"
+    ucf = UserCustomField.find_by(name: PLUGIN_NAME, user_id: user.id)
+    if ucf
+      ucf.value
+    else
+      "jAccount"
+    end
   end
 
   # can authorisation for this provider be revoked?
