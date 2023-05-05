@@ -1,6 +1,6 @@
 # name: jAccount auth
 # about: login with jAccount
-# version: 0.0.1
+# version: 0.0.2
 # authors: Rong Cai(feynixs)
 # url: https://github.com/ShuiyuanSJTU/discourse-omniauth-jaccount
 
@@ -39,7 +39,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
       if existing_user
         result.user = existing_user
         existing_user.custom_fields[PLUGIN_NAME] = ja_uid
-        existing_user.save_custom_fields
+        existing_user.save_custom_fields!
       end
     else # existing user
       result.user = User.find_by(id: current_info.user_id)
@@ -95,4 +95,11 @@ auth_provider title: 'with jAccount',
 
 after_initialize do
   User.register_custom_field_type PLUGIN_NAME, :string
+
+  # delete jaccount info when make user anonymous
+  on(:user_anonymized) do |params|
+    user = params[:user]
+    UserCustomField.find_by(name:PLUGIN_NAME,user_id:user.id).destroy
+  end
+
 end
