@@ -39,7 +39,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
       if existing_user
         result.user = existing_user
         existing_user.custom_fields[PLUGIN_NAME] = ja_uid
-        existing_user.save_custom_fields!
+        existing_user.save_custom_fields
       end
     else # existing user
       result.user = User.find_by(id: current_info.user_id)
