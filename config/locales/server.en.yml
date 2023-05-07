@@ -1,3 +1,9 @@
 en:
   site_settings:
     jaccount_auth_enabled: "jAccount auth is enabled"
+    jaccount_auth_block_types: "block jAccount whose type is in list"
+    jaccount_auth_block_code_regex: "block jAccount whose code matches regex in list"
+  jaccount_auth:
+    failed_reason:
+      blocked_type: "This jAccount cannot login due to its type"
+      blocked_code: "This jAccount cannot login due to its code"

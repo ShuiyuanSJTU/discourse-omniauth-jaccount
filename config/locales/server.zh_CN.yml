@@ -1,3 +1,9 @@
 zh_CN:
   site_settings:
     jaccount_auth_enabled: "启用 jAccount 登录"
+    jaccount_auth_block_types: "阻止这些 jAccount 类型注册"
+    jaccount_auth_block_code_regex: "阻止学工号满足这些正则的 jAccount 注册"
+  jaccount_auth:
+    failed_reason:
+      blocked_type: "当前 jAccount 账号身份不可登录"
+      blocked_code: "当前 jAccount 账号学工号不可登录"

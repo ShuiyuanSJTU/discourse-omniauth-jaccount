@@ -1,14 +1,65 @@
+# frozen_string_literal: true
+
 # name: jAccount auth
 # about: login with jAccount
-# version: 0.0.2
-# authors: Rong Cai(feynixs)
+# version: 0.0.3
+# authors: Rong Cai(feynixs), Jiajun Du
 # url: https://github.com/ShuiyuanSJTU/discourse-omniauth-jaccount
 
-gem 'omniauth-jaccount', '0.1.3'
+gem 'jwt', '2.7.0'
+
 PLUGIN_NAME ||= 'auth-jaccount'.freeze
 enabled_site_setting :jaccount_auth_enabled
 
 class JAccountAuthenticator < ::Auth::Authenticator
+
+  class JAccountStrategy < OmniAuth::Strategies::OAuth2
+    option :name, "jaccount"
+
+    option :client_options, {
+      site: 'https://api.sjtu.edu.cn/v1',
+      authorize_url: 'https://jaccount.sjtu.edu.cn/oauth2/authorize',
+      token_url: 'https://jaccount.sjtu.edu.cn/oauth2/token'
+    }
+
+    option :authorize_params, {scope: "essential"}
+
+    def request_phase
+      super
+    end
+
+    uid { raw_info["id"].to_s }
+
+    info do
+      {
+        'account' => raw_info['account'],
+        'email' => raw_info['account'] + "@sjtu.edu.cn",
+        'name' => raw_info['name'],
+        'code' => id_token['code'],
+        'type' => id_token['type']
+      }
+    end
+
+    extra do
+      {raw_info: raw_info, id_token: id_token}
+    end
+
+    def id_token
+      id_token = access_token.params["id_token"]
+      payload = JWT.decode(id_token, nil, false)[0]
+      payload
+    end
+
+    def raw_info
+      @raw_info ||= access_token.get('https://api.sjtu.edu.cn/v1/me/profile').parsed
+      @raw_info["entities"][0]
+    end
+
+    def callback_url
+      full_host + script_name + callback_path
+    end
+  end
+
 
   def name
     'jaccount'
@@ -23,11 +74,33 @@ class JAccountAuthenticator < ::Auth::Authenticator
 
     # Grap the info we need from OmniAuth
     data = auth_token[:info]
+
     name = screen_name = data["name"]
-    ja_uid = auth_token["uid"]
     email = data["email"]
-    ja_uid = email if ja_uid&.strip == ""
-    account_name = email.split("@")[0]
+    account = data["account"]
+    code = data["code"]
+    type = data["type"]
+
+    ja_uid = auth_token["uid"]
+    ja_uid = email if ja_uid&.strip == "" # 集体账号没有 jAcount UID
+
+    # 部分身份和学工号的 jAccount 不允许注册
+
+    blocked_types = SiteSetting.jaccount_auth_block_types.split(",")
+    if blocked_types.include?(type)
+      result.failed = true
+      result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_type")
+      return result
+    end
+
+    if SiteSetting.jaccount_auth_block_code_regex != ""
+      blocked_code_regexp = Regexp.new(SiteSetting.jaccount_auth_block_code_regex)
+      if code =~ blocked_code_regexp
+        result.failed = true
+        result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_code")
+        return result
+      end
+    end
 
     # Plugin specific data storage
     current_info = UserCustomField.find_by(name: PLUGIN_NAME, value: ja_uid)
@@ -45,8 +118,8 @@ class JAccountAuthenticator < ::Auth::Authenticator
       result.user = User.find_by(id: current_info.user_id)
     end
     
-    result.name ||= account_name
-    result.username = account_name
+    result.name ||= account
+    result.username = account
     result.email ||= email
     result.email_valid = true
     result.extra_data = {
@@ -63,7 +136,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
   end
 
   def register_middleware(omniauth)
-    omniauth.provider :jaccount,
+    omniauth.provider JAccountStrategy,
     client_id: ENV["JACCOUNT_APP_ID"],
     client_secret: ENV["JACCOUNT_SECRET"],
     scope: "basic"
