@@ -86,7 +86,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
 
     # 部分身份和学工号的 jAccount 不允许注册
 
-    blocked_types = SiteSetting.jaccount_auth_block_types.split(",")
+    blocked_types = SiteSetting.jaccount_auth_block_types.split("|")
     if blocked_types.include?(type)
       result.failed = true
       result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_type")
