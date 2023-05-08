@@ -89,7 +89,8 @@ class JAccountAuthenticator < ::Auth::Authenticator
     blocked_types = SiteSetting.jaccount_auth_block_types.split("|")
     if blocked_types.include?(type)
       result.failed = true
-      result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_type")
+      result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_type", type: type, email: SiteSetting.contact_email)
+      Rails.logger.warn("jaccount login blocked beacause of type `#{type}`,#{data}")
       return result
     end
 
@@ -97,7 +98,8 @@ class JAccountAuthenticator < ::Auth::Authenticator
       blocked_code_regexp = Regexp.new(SiteSetting.jaccount_auth_block_code_regex)
       if code =~ blocked_code_regexp
         result.failed = true
-        result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_code")
+        result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_code", code: code, email: SiteSetting.contact_email)
+        Rails.logger.warn("jaccount login blocked beacause of code `#{code}`,#{data}")
         return result
       end
     end
