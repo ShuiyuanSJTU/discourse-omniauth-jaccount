@@ -1,6 +1,6 @@
 # frozen_string_literal: true
 
-# name: jAccount auth
+# name: discourse-omniauth-jaccount
 # about: login with jAccount
 # version: 0.0.3
 # authors: Rong Cai(feynixs), Jiajun Du
