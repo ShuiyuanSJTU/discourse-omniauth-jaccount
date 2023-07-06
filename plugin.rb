@@ -95,7 +95,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
 
     if SiteSetting.jaccount_auth_block_code_regex != ""
       blocked_code_regexp = Regexp.new(SiteSetting.jaccount_auth_block_code_regex)
-      if (code =~ blocked_code_regexp) != nil
+      if code && code.match?(blocked_code_regexp)
         result.failed = true
         result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_code", code: code, email: SiteSetting.contact_email)
         Rails.logger.warn("jaccount login blocked beacause of code `#{code}`,#{data}")
