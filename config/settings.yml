@@ -6,6 +6,10 @@ login:
     default: ""
     type: list
     client: false
+  jaccount_auth_types_must_have_code: 
+    default: ""
+    type: list
+    client: false
   jaccount_auth_block_code_regex:
     default: ""
     client: false

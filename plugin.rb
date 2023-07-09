@@ -59,7 +59,6 @@ class JAccountAuthenticator < ::Auth::Authenticator
     end
   end
 
-
   def name
     'jaccount'
   end
@@ -74,11 +73,11 @@ class JAccountAuthenticator < ::Auth::Authenticator
     # Grap the info we need from OmniAuth
     data = auth_token[:info]
 
-    name = screen_name = data["name"]
-    email = data["email"]
-    account = data["account"]
-    code = data["code"]
-    type = data["type"]
+    name = screen_name = data["name"].to_s.strip
+    email = data["email"].to_s.strip
+    account = data["account"].to_s.strip
+    code = data["code"].to_s.strip
+    type = data["type"].to_s.strip
 
     ja_uid = auth_token["uid"]
     ja_uid = email if ja_uid&.strip == "" # 集体账号没有 jAcount UID
@@ -94,7 +93,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
     end
 
     if SiteSetting.jaccount_auth_block_code_regex != ""
-      if !code
+      SiteSetting.jaccount_auth_types_must_have_code.split("|").include?(type) && code.empty?
         result.failed = true
         result.failed_reason = I18n.t("jaccount_auth.failed_reason.no_code", type: type, email: SiteSetting.contact_email)
         Rails.logger.warn("jaccount login blocked beacause of no code,#{data}")
@@ -147,7 +146,6 @@ class JAccountAuthenticator < ::Auth::Authenticator
     client_id: ENV["JACCOUNT_APP_ID"],
     client_secret: ENV["JACCOUNT_SECRET"],
     scope: "basic"
-
   end
 
   def description_for_user(user)
