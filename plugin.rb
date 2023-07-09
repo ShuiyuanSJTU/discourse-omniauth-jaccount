@@ -96,7 +96,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
     end
 
     if SiteSetting.jaccount_auth_block_code_regex != ""
-      SiteSetting.jaccount_auth_types_must_have_code.split("|").include?(type) && code.empty?
+      if SiteSetting.jaccount_auth_types_must_have_code.split("|").include?(type) && code.empty?
         result.failed = true
         result.failed_reason = I18n.t("jaccount_auth.failed_reason.no_code", type: type, email: SiteSetting.contact_email)
         Rails.logger.warn("jaccount login blocked beacause of no code,#{data}")
