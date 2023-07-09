@@ -2,6 +2,9 @@ login:
   jaccount_auth_enabled:
     default: true
     client: true
+  jaccount_auth_debug_mode:
+    default: false
+    client: false
   jaccount_auth_block_types: 
     default: ""
     type: list
