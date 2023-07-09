@@ -4,6 +4,7 @@ en:
     jaccount_auth_block_types: "block jAccount whose type is in list"
     jaccount_auth_block_code_regex: "block jAccount whose code matches regex in list"
     jaccount_auth_types_must_have_code: "jAccount whose type is in list must have code"
+    jaccount_auth_debug_mode: "output debug info in log, **DO NOT enable unless you know what you are doing**"
   jaccount_auth:
     failed_reason:
       blocked_type: "This jAccount cannot login due to its type, your jAccount type %{type} does not allow login. If you have any questions, please contact %{email}."

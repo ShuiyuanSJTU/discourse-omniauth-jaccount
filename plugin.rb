@@ -2,7 +2,7 @@
 
 # name: discourse-omniauth-jaccount
 # about: login with jAccount
-# version: 0.0.4
+# version: 0.0.5
 # authors: Rong Cai(feynixs), Jiajun Du
 # url: https://github.com/ShuiyuanSJTU/discourse-omniauth-jaccount
 
@@ -82,8 +82,11 @@ class JAccountAuthenticator < ::Auth::Authenticator
     ja_uid = auth_token["uid"]
     ja_uid = email if ja_uid&.strip == "" # 集体账号没有 jAcount UID
 
-    # 部分身份和学工号的 jAccount 不允许注册
+    if SiteSetting.jaccount_auth_debug_mode
+      Rails.logger.warn("[DEBUG] jaccount login,#{data}")
+    end
 
+    # 部分身份和学工号的 jAccount 不允许注册
     blocked_types = SiteSetting.jaccount_auth_block_types.split("|")
     if blocked_types.include?(type)
       result.failed = true
