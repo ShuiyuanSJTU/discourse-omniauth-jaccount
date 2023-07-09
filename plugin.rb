@@ -2,7 +2,7 @@
 
 # name: discourse-omniauth-jaccount
 # about: login with jAccount
-# version: 0.0.3
+# version: 0.0.4
 # authors: Rong Cai(feynixs), Jiajun Du
 # url: https://github.com/ShuiyuanSJTU/discourse-omniauth-jaccount
 
@@ -94,6 +94,12 @@ class JAccountAuthenticator < ::Auth::Authenticator
     end
 
     if SiteSetting.jaccount_auth_block_code_regex != ""
+      if !code
+        result.failed = true
+        result.failed_reason = I18n.t("jaccount_auth.failed_reason.no_code", type: type, email: SiteSetting.contact_email)
+        Rails.logger.warn("jaccount login blocked beacause of no code,#{data}")
+        return result
+      end
       blocked_code_regexp = Regexp.new(SiteSetting.jaccount_auth_block_code_regex)
       if code && code.match?(blocked_code_regexp)
         result.failed = true
