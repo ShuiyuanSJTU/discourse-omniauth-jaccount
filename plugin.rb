@@ -34,19 +34,13 @@ class JAccountAuthenticator < ::Auth::Authenticator
         'account' => raw_info['account'],
         'email' => raw_info['account'] + "@sjtu.edu.cn",
         'name' => raw_info['name'],
-        'code' => id_token['code'],
-        'type' => id_token['type']
+        'code' => raw_info['code'],
+        'type' => raw_info['userType']
       }
     end
 
     extra do
-      {raw_info: raw_info, id_token: id_token}
-    end
-
-    def id_token
-      id_token = access_token.params["id_token"]
-      payload = JWT.decode(id_token, nil, false)[0]
-      payload
+      {raw_info: raw_info}
     end
 
     def raw_info
@@ -148,7 +142,7 @@ class JAccountAuthenticator < ::Auth::Authenticator
     omniauth.provider JAccountStrategy,
     client_id: ENV["JACCOUNT_APP_ID"],
     client_secret: ENV["JACCOUNT_SECRET"],
-    scope: "basic"
+    scope: "essential"
   end
 
   def description_for_user(user)
