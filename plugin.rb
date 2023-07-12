@@ -2,18 +2,19 @@
 
 # name: discourse-omniauth-jaccount
 # about: login with jAccount
-# version: 0.0.5
-# authors: Rong Cai(feynixs), Jiajun Du
+# version: 0.1.0
+# authors: Rong Cai(feynixs), Jiajun Du, pangbo
 # url: https://github.com/ShuiyuanSJTU/discourse-omniauth-jaccount
 
 
 PLUGIN_NAME ||= 'auth-jaccount'.freeze
+PROVIDER_NAME ||= 'jaccount'.freeze
 enabled_site_setting :jaccount_auth_enabled
 
-class JAccountAuthenticator < ::Auth::Authenticator
+class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
 
   class JAccountStrategy < OmniAuth::Strategies::OAuth2
-    option :name, "jaccount"
+    option :name, PROVIDER_NAME
 
     option :client_options, {
       site: 'https://api.sjtu.edu.cn/v1',
@@ -73,12 +74,13 @@ class JAccountAuthenticator < ::Auth::Authenticator
     code = data["code"].to_s.strip
     type = data["type"].to_s.strip
 
+    provider = auth_token[:provider] || PROVIDER_NAME
+    if auth_token[:provider] != PROVIDER_NAME
+      Rails.logger.warn("jaccount provider name not match, #{auth_token[:provider]} != #{PROVIDER_NAME}")
+    end
+
     ja_uid = auth_token["uid"]
     ja_uid = email if ja_uid&.strip == "" # 集体账号没有 jAcount UID
-
-    if SiteSetting.jaccount_auth_debug_mode
-      Rails.logger.warn("[DEBUG] jaccount login,#{data}")
-    end
 
     # 部分身份和学工号的 jAccount 不允许注册
     blocked_types = SiteSetting.jaccount_auth_block_types.split("|")
@@ -86,7 +88,6 @@ class JAccountAuthenticator < ::Auth::Authenticator
       result.failed = true
       result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_type", type: type, email: SiteSetting.contact_email)
       Rails.logger.warn("jaccount login blocked beacause of type `#{type}`,#{data}")
-      return result
     end
 
     if SiteSetting.jaccount_auth_block_code_regex != ""
@@ -94,48 +95,75 @@ class JAccountAuthenticator < ::Auth::Authenticator
         result.failed = true
         result.failed_reason = I18n.t("jaccount_auth.failed_reason.no_code", type: type, email: SiteSetting.contact_email)
         Rails.logger.warn("jaccount login blocked beacause of no code,#{data}")
-        return result
       end
       blocked_code_regexp = Regexp.new(SiteSetting.jaccount_auth_block_code_regex)
       if code && code.match?(blocked_code_regexp)
         result.failed = true
         result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_code", code: code, email: SiteSetting.contact_email)
         Rails.logger.warn("jaccount login blocked beacause of code `#{code}`,#{data}")
-        return result
       end
     end
 
     # Plugin specific data storage
-    current_info = UserCustomField.find_by(name: PLUGIN_NAME, value: ja_uid)
-
-    # Check if the user is trying to connect an existing account
-    unless current_info
-      # try to find by email
-      existing_user = User.joins(:user_emails).find_by(user_emails: { email: email.downcase })
-      if existing_user
-        result.user = existing_user
-        existing_user.custom_fields[PLUGIN_NAME] = ja_uid
-        existing_user.save_custom_fields
+    association =
+    UserAssociatedAccount.find_or_initialize_by(
+      provider_name: provider,
+      provider_uid: ja_uid,
+      )
+      
+      # Check if the user is trying to connect an existing account
+      if association.user_id.nil?
+        # try to find by email
+        existing_user = User.find_by_email(email.downcase)
+        if existing_user
+          result.user = existing_user
+          association.user = existing_user
+        end
+      else # existing user
+        result.user = User.find_by(id: association.user_id)
       end
-    else # existing user
-      result.user = User.find_by(id: current_info.user_id)
-    end
-    
-    result.name ||= account
-    result.username = account
-    result.email ||= email
+      
+      association.info = auth_token[:info] || {}
+      association.extra = auth_token[:extra] || {}
+      association.last_used = Time.zone.now
+      
+      association.save!
+      
+      if SiteSetting.jaccount_auth_debug_mode
+        Rails.logger.warn <<~EOS 
+          [DEBUG] jaccount login, #{result.user&.username}(#{result.user&.id})
+          #{auth_token[:info]}
+          #{auth_token[:extra]}
+          #{result.failed_reason}
+        EOS
+      end
+
+      if result.failed
+        result.user = nil
+        return result
+      end
+
+      result.name ||= account
+      result.username = account
+      result.email ||= email
     result.email_valid = true
     result.extra_data = {
       jaccount_uid: ja_uid,
-      jaccount_screen_name: screen_name
+      jaccount_screen_name: screen_name,
+      jaccount_provider: provider
     }
     result
   end
 
-  def after_create_account(user, auth)
-    data = auth[:extra_data]
-    user.custom_fields[PLUGIN_NAME] = data[:jaccount_uid]
-    user.save_custom_fields
+  def after_create_account(user, auth_result)
+    data = auth_result[:extra_data]
+    association =
+      UserAssociatedAccount.find_or_initialize_by(
+        provider_name: data[:jaccount_provider],
+        provider_uid: data[:jaccount_uid],
+      )
+    association.user = user
+    association.save!
   end
 
   def register_middleware(omniauth)
@@ -146,11 +174,14 @@ class JAccountAuthenticator < ::Auth::Authenticator
   end
 
   def description_for_user(user)
-    ucf = UserCustomField.find_by(name: PLUGIN_NAME, user_id: user.id)
-    if ucf
-      ucf.value
+    association = UserAssociatedAccount.find_by(
+        provider_name: PROVIDER_NAME,
+        user_id: user.id,
+      )
+    if association
+      association.provider_uid
     else
-      "jAccount"
+      ""
     end
   end
 
@@ -166,15 +197,5 @@ class JAccountAuthenticator < ::Auth::Authenticator
 end
 
 auth_provider title: 'with jAccount',
-              authenticator: JAccountAuthenticator.new
+              authenticator: ::Auth::JAccountAuthenticator.new
 
-after_initialize do
-  User.register_custom_field_type PLUGIN_NAME, :string
-
-  # delete jaccount info when make user anonymous
-  on(:user_anonymized) do |params|
-    user = params[:user]
-    UserCustomField.find_by(name:PLUGIN_NAME,user_id:user.id).destroy
-  end
-
-end
