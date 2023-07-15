@@ -8,7 +8,6 @@ class MoveToUserAssociationTable < ActiveRecord::Migration[7.0]
           user_id: row.user_id
         )
       association.save!
-      row.destroy!
     end
   end
 
