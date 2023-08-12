@@ -2,7 +2,7 @@
 
 # name: discourse-omniauth-jaccount
 # about: login with jAccount
-# version: 0.1.0
+# version: 0.1.1
 # authors: Rong Cai(feynixs), Jiajun Du, pangbo
 # url: https://github.com/ShuiyuanSJTU/discourse-omniauth-jaccount
 
@@ -118,6 +118,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
         if existing_user
           result.user = existing_user
           association.user = existing_user
+          UserAssociatedAccount.where(provider_name: provider, user_id: existing_user.id).destroy_all
         end
       else # existing user
         result.user = User.find_by(id: association.user_id)
