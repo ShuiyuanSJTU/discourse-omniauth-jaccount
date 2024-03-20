@@ -62,6 +62,23 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     SiteSetting.jaccount_auth_enabled
   end
 
+  def lookup_user_from_code(extra)
+    begin
+      identities = extra["raw_info"]["identities"]
+    rescue
+      return nil
+    end
+    if identities.nil? || !identities.is_a?(Array) || identities.length == 0
+      return nil
+    else
+      query_codes = identities.compact.map{|id| id["code"]}\
+        .compact.map{|code| ["code":code.to_s].to_json}
+      association_record = UserAssociatedAccount.where(
+          "extra -> 'raw_info' -> 'identities' @> ANY(ARRAY[?]::jsonb[])", query_codes)
+      User.where(id: association_record.pluck(:user_id))
+    end
+  end
+
   def after_authenticate(auth_token)
     result = Auth::Result.new
 
@@ -105,48 +122,56 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     end
 
     # Plugin specific data storage
-    association =
-    UserAssociatedAccount.find_or_initialize_by(
+    association = UserAssociatedAccount.find_or_initialize_by(
       provider_name: provider,
       provider_uid: ja_uid,
       )
       
-      # Check if the user is trying to connect an existing account
-      if association.user_id.nil?
-        # try to find by email
-        existing_user = User.find_by_email(email.downcase)
-        if existing_user
-          result.user = existing_user
-          association.user = existing_user
-          UserAssociatedAccount.where(provider_name: provider, user_id: existing_user.id).destroy_all
+    # Check if the user is trying to connect an existing account
+    if association.user_id.nil?
+      # try to find by email
+      existing_user = User.find_by_email(email.downcase)
+      if existing_user.nil?
+        association_record_by_code = lookup_user_from_code(auth_token[:extra])
+        if association_record_by_code.length == 1
+          existing_user = association_record_by_code.first
+        elsif association_record_by_code.length > 1
+          result.failed = true
+          result.failed_reason = I18n.t("jaccount_auth.failed_reason.multiple_user_found", email: SiteSetting.contact_email, error_code: association_record_by_code.pluck(:id))
         end
-      else # existing user
-        result.user = User.find_by(id: association.user_id)
       end
-      
-      association.info = auth_token[:info] || {}
-      association.extra = auth_token[:extra] || {}
-      association.last_used = Time.zone.now
-      
-      association.save!
-      
-      if SiteSetting.jaccount_auth_debug_mode
-        Rails.logger.warn <<~EOS 
-          [DEBUG] jaccount login, #{result.user&.username}(#{result.user&.id})
-          #{auth_token[:info]}
-          #{auth_token[:extra]}
-          #{result.failed_reason}
-        EOS
+      if !existing_user.nil?
+        result.user = existing_user
+        association.user = existing_user
+        UserAssociatedAccount.where(provider_name: provider, user_id: existing_user.id).destroy_all
       end
+    else # existing user
+      result.user = User.find_by(id: association.user_id)
+    end
+    
+    association.info = auth_token[:info] || {}
+    association.extra = auth_token[:extra] || {}
+    association.last_used = Time.zone.now
+    
+    association.save!
+    
+    if SiteSetting.jaccount_auth_debug_mode
+      Rails.logger.warn <<~EOS 
+        [DEBUG] jaccount login, #{result.user&.username}(#{result.user&.id})
+        #{auth_token[:info]}
+        #{auth_token[:extra]}
+        #{result.failed_reason}
+      EOS
+    end
 
-      if result.failed
-        result.user = nil
-        return result
-      end
+    if result.failed
+      result.user = nil
+      return result
+    end
 
-      result.name ||= account
-      result.username = account
-      result.email ||= email
+    result.name ||= account
+    result.username = account
+    result.email ||= email
     result.email_valid = true
     result.extra_data = {
       jaccount_uid: ja_uid,
