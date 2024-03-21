@@ -131,9 +131,12 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     if association.user_id.nil?
       # try to find by email
       existing_user = User.find_by_email(email.downcase)
+      # try to find by code
       if existing_user.nil?
         association_record_by_code = lookup_user_from_code(auth_token[:extra])
-        if association_record_by_code.length == 1
+        if association_record_by_code.nil? || association_record_by_code.length == 0
+          existing_user = nil
+        elsif association_record_by_code.length == 1
           existing_user = association_record_by_code.first
         elsif association_record_by_code.length > 1
           result.failed = true
