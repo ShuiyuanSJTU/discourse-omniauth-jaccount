@@ -6,12 +6,10 @@
 # authors: Rong Cai(feynixs), Jiajun Du, pangbo
 # url: https://github.com/ShuiyuanSJTU/discourse-omniauth-jaccount
 
-
-PLUGIN_NAME ||= 'auth-jaccount'.freeze
-PROVIDER_NAME ||= 'jaccount'.freeze
 enabled_site_setting :jaccount_auth_enabled
-
 class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
+  PLUGIN_NAME ||= 'auth-jaccount'.freeze
+  PROVIDER_NAME ||= 'jaccount'.freeze
 
   class JAccountStrategy < OmniAuth::Strategies::OAuth2
     option :name, PROVIDER_NAME
@@ -23,10 +21,6 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     }
 
     option :authorize_params, {scope: "essential"}
-
-    def request_phase
-      super
-    end
 
     uid { raw_info["id"].to_s }
 
@@ -55,7 +49,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
   end
 
   def name
-    'jaccount'
+    PROVIDER_NAME
   end
 
   def enabled?
@@ -68,8 +62,9 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     rescue
       return nil
     end
+
     if identities.nil? || !identities.is_a?(Array) || identities.length == 0
-      return nil
+      nil
     else
       query_codes = identities.compact.map{|id| id["code"]}\
         .compact.map{|code| ["code":code.to_s].to_json}
