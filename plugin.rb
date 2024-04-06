@@ -2,7 +2,7 @@
 
 # name: discourse-omniauth-jaccount
 # about: login with jAccount
-# version: 0.1.1
+# version: 0.2.0
 # authors: Rong Cai(feynixs), Jiajun Du, pangbo
 # url: https://github.com/ShuiyuanSJTU/discourse-omniauth-jaccount
 
