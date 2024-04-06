@@ -75,12 +75,15 @@ RSpec.describe Auth::JAccountAuthenticator do
 
   describe "should find existing user" do
     it "can find existing user by uid" do
+      Auth::JAccountAuthenticator.any_instance.expects(:lookup_user_from_code).never
+      User.expects(:find_by_email).never
       UserAssociatedAccount.create!(user_id: user.id, provider_name: "jaccount", provider_uid: jaccount_test_info["normal_user"]["id"])
       result = authenticator.after_authenticate(normal_account)
       expect(result.failed).to be_falsey
       expect(result.user).to eq(user)
     end
     it "can find existing user by email" do
+      Auth::JAccountAuthenticator.any_instance.expects(:lookup_user_from_code).never
       expect(UserAssociatedAccount.find_by(provider_name: "jaccount", provider_uid: jaccount_test_info["normal_user"]["id"])).to be_nil
       user.update!(email: jaccount_test_info["normal_user"]["account"] + "@sjtu.edu.cn")
       result = authenticator.after_authenticate(normal_account)
@@ -138,6 +141,32 @@ RSpec.describe Auth::JAccountAuthenticator do
         I18n.t("jaccount_auth.failed_reason.no_code",
           type: jaccount_test_info["team_user"]["userType"], email: SiteSetting.contact_email)
         )
+    end
+  end
+  describe "could lookup user from code" do
+    before(:example) do
+      association = UserAssociatedAccount.create!(user_id: user.id, provider_name: "jaccount", provider_uid: "SOME_RANDOM_UID")
+      association.extra = { raw_info: jaccount_test_info["normal_user"] }
+      association.save!
+      user.update!(email: "RANDOM_EMAIL@sjtu.edu.cn")
+    end
+    it "would invoke lookup_user_from_code" do
+      Auth::JAccountAuthenticator.any_instance.expects(:lookup_user_from_code).once.returns([user])
+      result = authenticator.after_authenticate(normal_account)
+    end
+    it "would update user association" do
+      result = authenticator.after_authenticate(normal_account)
+      expect(result.failed).to be_falsey
+      expect(result.user).to eq(user)
+      expect(UserAssociatedAccount.find_by(provider_name: "jaccount", provider_uid: jaccount_test_info["normal_user"]["id"])).to be_present
+      expect(UserAssociatedAccount.find_by(provider_name: "jaccount", provider_uid: "SOME_RANDOM_UID")).to be_nil
+    end
+    it "could lookup from other identity" do
+      default_identity_changed = normal_account.dup.tap { 
+        |a| a.info[:code] = a.extra[:raw_info][:identities][0][:code] }
+      result = authenticator.after_authenticate(default_identity_changed)
+      expect(result.failed).to be_falsey
+      expect(result.user).to eq(user)
     end
   end
 end
