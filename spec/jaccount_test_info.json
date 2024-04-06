@@ -1,0 +1,159 @@
+{
+    "team_user": {
+        "code": "11000",
+        "kind": "canvas.profile",
+        "name": "张三",
+        "account": "zhangsan",
+        "organize": {
+            "id": "40100",
+            "name": "网络信息中心"
+        },
+        "timeZone": 0,
+        "userType": "team",
+        "topOrganize": {
+            "id": "40100",
+            "name": "网络信息中心"
+        }
+    },
+    "normal_user": {
+        "id": "AAAAAAAA-1111-BBBB-AACC-AAAAZZZZCCCC",
+        "code": "021033000000",
+        "kind": "canvas.profile",
+        "name": "李四",
+        "account": "lisi",
+        "classNo": "电院21D099",
+        "unionId": "XXXXXXXXXXXXX",
+        "organize": {
+            "id": "03300",
+            "name": "计算机科学与工程系"
+        },
+        "timeZone": 0,
+        "userType": "student",
+        "identities": [
+            {
+                "code": "AA517030000000",
+                "kind": "nicman.identity",
+                "organize": {
+                    "id": "03000",
+                    "name": "电子信息与电气工程学院"
+                },
+                "userType": "alumni",
+                "isDefault": false,
+                "createDate": 1657000000,
+                "updateDate": 1685000000,
+                "userTypeName": "校友",
+                "defaultOptional": true
+            },
+            {
+                "gjm": "156",
+                "code": "021033000000",
+                "kind": "nicman.identity",
+                "status": "正常",
+                "classNo": "电院21D099",
+                "organize": {
+                    "id": "03300",
+                    "name": "计算机科学与工程系"
+                },
+                "userType": "student",
+                "isDefault": true,
+                "createDate": 1656000000,
+                "expireDate": "2026-06-30",
+                "updateDate": 1697000000,
+                "mgtOrganize": {
+                    "id": "03300",
+                    "name": "计算机科学与工程系"
+                },
+                "topOrganize": {
+                    "id": "03000",
+                    "name": "电子信息与电气工程学院"
+                },
+                "topOrganizes": [
+                    {
+                        "id": "03000",
+                        "name": "电子信息与电气工程学院"
+                    }
+                ],
+                "userTypeName": "学生",
+                "topMgtOrganize": {
+                    "id": "03000",
+                    "name": "电子信息与电气工程学院"
+                },
+                "defaultOptional": true
+            },
+            {
+                "gjm": "156",
+                "code": "517030000000",
+                "kind": "nicman.identity",
+                "status": "离校",
+                "classNo": "F1703000",
+                "organize": {
+                    "id": "03000",
+                    "name": "电子信息与电气工程学院"
+                },
+                "userType": "student",
+                "isDefault": false,
+                "createDate": 16470000000,
+                "expireDate": "2021-06-30",
+                "updateDate": 1696000000,
+                "mgtOrganize": {
+                    "id": "24000",
+                    "name": "致远学院"
+                },
+                "topOrganize": {
+                    "id": "03000",
+                    "name": "电子信息与电气工程学院"
+                },
+                "topOrganizes": [
+                    {
+                        "id": "03000",
+                        "name": "电子信息与电气工程学院"
+                    },
+                    {
+                        "id": "24000",
+                        "name": "致远学院"
+                    }
+                ],
+                "userTypeName": "学生",
+                "topMgtOrganize": {
+                    "id": "24000",
+                    "name": "致远学院"
+                },
+                "defaultOptional": false
+            }
+        ],
+        "topOrganize": {
+            "id": "03000",
+            "name": "电子信息与电气工程学院"
+        }
+    },
+    "should_block_code_user": {
+        "id": "AAAAAAAA-3333-BBBB-AACC-AAAAZZZZEEEE",
+        "code": "723602910000",
+        "kind": "canvas.profile",
+        "name": "高中生",
+        "account": "gaozhongsheng",
+        "organize": {
+            "id": "60200",
+            "name": "教务处"
+        },
+        "timeZone": 0,
+        "userType": "student",
+        "identities": [],
+        "topOrganize": {
+            "id": "60200",
+            "name": "教务处"
+        }
+    },
+    "should_block_type_user": {
+        "id": "AAAAAAAA-2222-BBBB-AACC-AAAAZZZZDDDD",
+        "code": "TQ2400000000",
+        "kind": "canvas.profile",
+        "name": "外部",
+        "account": "waibu",
+        "organize": {},
+        "timeZone": 0,
+        "userType": "outside",
+        "identities": [],
+        "topOrganize": {}
+    }
+}
