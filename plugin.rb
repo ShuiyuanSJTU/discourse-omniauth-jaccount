@@ -92,7 +92,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     end
 
     ja_uid = auth_token["uid"]
-    ja_uid = email if ja_uid&.strip == "" # 集体账号没有 jAcount UID
+    ja_uid = email if ja_uid.to_s.strip.empty? # 集体账号没有 jAcount UID
 
     # 部分身份和学工号的 jAccount 不允许注册
     blocked_types = SiteSetting.jaccount_auth_block_types.split("|")
@@ -103,7 +103,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     end
 
     if SiteSetting.jaccount_auth_block_code_regex != ""
-      if SiteSetting.jaccount_auth_types_must_have_code.split("|").include?(type) && code.empty?
+      if SiteSetting.jaccount_auth_types_must_have_code.split("|").include?(type) && code.to_s.strip.empty?
         result.failed = true
         result.failed_reason = I18n.t("jaccount_auth.failed_reason.no_code", type: type, email: SiteSetting.contact_email)
         Rails.logger.warn("jaccount login blocked beacause of no code,#{data}")
@@ -121,7 +121,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
       provider_name: provider,
       provider_uid: ja_uid,
       )
-      
+
     # Check if the user is trying to connect an existing account
     if association.user_id.nil?
       # try to find by email
