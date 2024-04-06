@@ -136,6 +136,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
         elsif association_record_by_code.length > 1
           result.failed = true
           result.failed_reason = I18n.t("jaccount_auth.failed_reason.multiple_user_found", email: SiteSetting.contact_email, error_code: association_record_by_code.pluck(:id))
+          Rails.logger.warn("jaccount login failed because of multiple user found,#{association_record_by_code.pluck(:id)},#{data}")
         end
       end
       if !existing_user.nil?

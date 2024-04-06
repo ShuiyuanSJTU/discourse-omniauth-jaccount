@@ -168,5 +168,19 @@ RSpec.describe Auth::JAccountAuthenticator do
       expect(result.failed).to be_falsey
       expect(result.user).to eq(user)
     end
+    it "would fail if multiple user found" do
+      Rails.logger.expects(:warn).once
+      UserAssociatedAccount.create!(
+        user_id: Fabricate(:user).id, provider_name: "jaccount", provider_uid: "SOME_RANDOM_UID_2",
+        extra: { raw_info: jaccount_test_info["normal_user"] }
+      )
+      result = authenticator.after_authenticate(normal_account)
+      expect(result.failed).to be_truthy
+      expect(result.user).to be_nil
+      expect(result.failed_reason).to eq(
+        I18n.t("jaccount_auth.failed_reason.multiple_user_found",
+          email: SiteSetting.contact_email, error_code: UserAssociatedAccount.where(provider_name: "jaccount", provider_uid: jaccount_test_info["normal_user"]["id"]).pluck(:user_id))
+        )
+    end
   end
 end
