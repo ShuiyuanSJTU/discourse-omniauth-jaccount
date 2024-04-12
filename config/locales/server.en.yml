@@ -11,3 +11,7 @@ en:
       blocked_code: "This jAccount cannot login due to its code, the range of your code (%{code}) is not allowed to log in. If you have any questions, please contact %{email}."
       no_code: "Cannot get the code of this jAccount, your jAccount type is %{type}. This may be an unexpected error. If you have any questions, please contact %{email}."
       multiple_user_found: "Error occurred when finding related user, please contact %{email} and attach the error message. Error message: %{error_code}."
+    admin_user_details:
+      no_jaccount: "No associated jAccount"
+      no_identities: "No identity list"
+      no_valid_identities: "No valid identity"

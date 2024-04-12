@@ -224,3 +224,30 @@ end
 auth_provider title: 'with jAccount',
               authenticator: ::Auth::JAccountAuthenticator.new
 
+after_initialize do
+  add_to_serializer(:admin_detailed_user, :jaccount_type) do
+    association = UserAssociatedAccount.find_by(
+      provider_name: ::Auth::JAccountAuthenticator::PROVIDER_NAME,
+      user_id: object.id,
+    )
+    if association.nil?
+      return I18n.t("jaccount_auth.admin_user_details.no_jaccount")
+    end
+    identities = association.extra.dig('raw_info','identities')
+    if identities.nil? || !identities.is_a?(Array) || identities.length == 0
+      return I18n.t("jaccount_auth.admin_user_details.no_identities") + "(#{association.extra.dig('raw_info','userType')})"
+    end
+    valid_identities = identities.reject{|id| id['expireDate'].nil?}.reject do |id|
+      begin
+        Time.parse(id['expireDate']) < Time.now
+      rescue
+        true
+      end
+    end.pluck('userTypeName').uniq.compact
+    return valid_identities.join(', ') if valid_identities.length > 0
+    # check if there is an alumni identity
+    alumni_identities = identities.select{|id| id['userType'] == 'alumni'}
+    return alumni_identities.pluck('userTypeName').first.to_s if alumni_identities.length > 0
+    I18n.t("jaccount_auth.admin_user_details.no_valid_identities") + "(#{association.extra.dig('raw_info','userType')})"
+  end
+end

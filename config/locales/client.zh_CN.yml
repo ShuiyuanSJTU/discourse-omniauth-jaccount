@@ -3,3 +3,6 @@ zh_CN:
     login:
       jaccount:
         name: "jAccount"
+    user:
+      jaccount_type:
+        title: "jAccount类型"

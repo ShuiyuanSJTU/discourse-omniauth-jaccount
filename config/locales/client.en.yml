@@ -3,3 +3,6 @@ en:
     login:
       jaccount:
         name: "jAccount"
+    user:
+      jaccount_type:
+        title: "jAccount Type"
