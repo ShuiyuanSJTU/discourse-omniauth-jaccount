@@ -225,7 +225,7 @@ auth_provider title: 'with jAccount',
               authenticator: ::Auth::JAccountAuthenticator.new
 
 after_initialize do
-  add_to_serializer(:admin_detailed_user, :jaccount_type) do
+  add_to_serializer(:admin_detailed_user, :jaccount_type, include_condition: -> { SiteSetting.jaccount_display_account_type }) do
     association = UserAssociatedAccount.find_by(
       provider_name: ::Auth::JAccountAuthenticator::PROVIDER_NAME,
       user_id: object.id,

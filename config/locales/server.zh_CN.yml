@@ -5,6 +5,7 @@ zh_CN:
     jaccount_auth_block_code_regex: "阻止学工号满足这些正则的 jAccount 注册"
     jaccount_auth_types_must_have_code: "这些 jAccount 类型必须有学工号"
     jaccount_auth_debug_mode: "在日志中输出调试信息，**除非你知道自己在做什么，否则请勿开启**"
+    jaccount_display_account_type: "在用户详情页显示 jAccount 账号类型"
   jaccount_auth:
     failed_reason:
       blocked_type: "当前 jAccount 账号身份不可登录，您的身份%{type}不允许登录，如果您有任何疑问，请联系%{email}。部分 jAccount 账号可能拥有多个身份，请参考网信中心的教程进行身份切换：https://net.sjtu.edu.cn/info/1188/2647.htm。"

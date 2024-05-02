@@ -16,3 +16,6 @@ login:
   jaccount_auth_block_code_regex:
     default: ""
     client: false
+  jaccount_display_account_type:
+    default: false
+    client: false
