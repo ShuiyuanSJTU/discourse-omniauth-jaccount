@@ -2,7 +2,7 @@
 
 # name: discourse-omniauth-jaccount
 # about: login with jAccount
-# version: 0.2.0
+# version: 0.2.1
 # authors: Rong Cai(feynixs), Jiajun Du, pangbo
 # url: https://github.com/ShuiyuanSJTU/discourse-omniauth-jaccount
 
@@ -74,6 +74,58 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     end
   end
 
+  def is_blocked_indentity?(type, code)
+    if SiteSetting.jaccount_auth_block_types.split("|").include?(type)
+      return :type_blocked
+    end
+    if SiteSetting.jaccount_auth_block_code_regex != ""
+      if SiteSetting.jaccount_auth_types_must_have_code.split("|").include?(type) && 
+          code.to_s.strip.empty?
+        return :no_code
+      end
+      blocked_code_regexp = Regexp.new(SiteSetting.jaccount_auth_block_code_regex)
+      if code && code.match?(blocked_code_regexp)
+        return :code_blocked
+      end
+    end
+  end
+
+  def is_allowed_jaccount?(raw_info)
+    failed_reason = nil
+    
+    # 检查默认身份
+    code = raw_info["code"].to_s.strip
+    type = raw_info["userType"].to_s.strip
+    failed_reason = is_blocked_indentity?(type, code)
+    
+    if failed_reason.nil?
+      return true, nil
+    elsif !SiteSetting.jaccount_auth_check_all_identities
+      return false, failed_reason
+    end
+    
+    # 开始检查所有身份
+    passed = false
+    valid_identities = raw_info.identities.to_a.reject do |id|
+      begin
+        Time.parse(id['expireDate']) < Time.now
+      rescue
+        true
+      end
+    end.each do |id|
+      if is_blocked_indentity?(id["userType"], id["code"]).nil?
+        passed = true
+        break
+      end
+    end
+
+    if passed
+      return true, nil
+    else
+      return false, failed_reason
+    end
+  end
+
   def after_authenticate(auth_token)
     result = Auth::Result.new
 
@@ -93,26 +145,23 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
 
     ja_uid = auth_token["uid"]
     ja_uid = email if ja_uid.to_s.strip.empty? # 集体账号没有 jAcount UID
-
-    # 部分身份和学工号的 jAccount 不允许注册
-    blocked_types = SiteSetting.jaccount_auth_block_types.split("|")
-    if blocked_types.include?(type)
+    # byebug
+    should_allow_login, failed_reason = is_allowed_jaccount?(auth_token[:extra][:raw_info])
+    if !should_allow_login
       result.failed = true
-      result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_type", type: type, email: SiteSetting.contact_email)
-      Rails.logger.warn("jaccount login blocked beacause of type `#{type}`,#{data}")
-    end
-
-    if SiteSetting.jaccount_auth_block_code_regex != ""
-      if SiteSetting.jaccount_auth_types_must_have_code.split("|").include?(type) && code.to_s.strip.empty?
-        result.failed = true
-        result.failed_reason = I18n.t("jaccount_auth.failed_reason.no_code", type: type, email: SiteSetting.contact_email)
+      case failed_reason
+      when :type_blocked
+        result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_type", email: SiteSetting.contact_email, type: type)
+        Rails.logger.warn("jaccount login blocked beacause of type `#{type}`,#{data}")
+      when :no_code
+        result.failed_reason = I18n.t("jaccount_auth.failed_reason.no_code", email: SiteSetting.contact_email, type: type)
         Rails.logger.warn("jaccount login blocked beacause of no code,#{data}")
-      end
-      blocked_code_regexp = Regexp.new(SiteSetting.jaccount_auth_block_code_regex)
-      if code && code.match?(blocked_code_regexp)
-        result.failed = true
-        result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_code", code: code, email: SiteSetting.contact_email)
+      when :code_blocked
+        result.failed_reason = I18n.t("jaccount_auth.failed_reason.blocked_code", email: SiteSetting.contact_email, code: code)
         Rails.logger.warn("jaccount login blocked beacause of code `#{code}`,#{data}")
+      else
+        result.failed_reason = I18n.t("jaccount_auth.failed_reason.unknown", email: SiteSetting.contact_email, code: code, type: type)
+        Rails.logger.warn("jaccount login blocked beacause of unknown reason,#{data}")
       end
     end
 

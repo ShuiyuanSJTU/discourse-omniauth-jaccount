@@ -101,6 +101,7 @@ RSpec.describe Auth::JAccountAuthenticator do
       expect(UserAssociatedAccount.find_by(provider_name: "jaccount", provider_uid: jaccount_test_info["normal_user"]["id"])).to be_present
     end
   end
+
   describe "should block user" do
     before(:example) do
       SiteSetting.jaccount_auth_block_code_regex = "^(AA)?(7\\d{2}602\\d{6})$"
@@ -134,7 +135,8 @@ RSpec.describe Auth::JAccountAuthenticator do
     it "should block specific type without code" do
       SiteSetting.jaccount_auth_types_must_have_code = "team"
       result = authenticator.after_authenticate(
-        team_account.dup.tap { |a| a.info[:code] = "" })
+        team_account.dup.tap { |a| a.info.code = "" }
+          .tap { |a| a.extra.raw_info.code = "" })
       expect(result.failed).to be_truthy
       expect(result.user).to be_nil
       expect(result.failed_reason).to eq(
@@ -143,6 +145,7 @@ RSpec.describe Auth::JAccountAuthenticator do
         )
     end
   end
+
   describe "could lookup user from code" do
     before(:example) do
       association = UserAssociatedAccount.create!(user_id: user.id, provider_name: "jaccount", provider_uid: "SOME_RANDOM_UID")
@@ -182,6 +185,27 @@ RSpec.describe Auth::JAccountAuthenticator do
         I18n.t("jaccount_auth.failed_reason.multiple_user_found",
           email: SiteSetting.contact_email, error_code: [user.id, another_user.id])
         )
+    end
+  end
+
+  describe "could check all identities" do
+    before(:example) do
+      SiteSetting.jaccount_auth_block_code_regex = "^(AA)?(7\\d{2}602\\d{6})$"
+      SiteSetting.jaccount_auth_block_types = "outside"
+    end
+    let(:normal_account_with_blocked_default) { 
+      normal_account.dup.tap { |a| a.info.userType = "outside" }
+        .tap { |a| a.extra.raw_info.userType = "outside" }
+    }
+    it "should allow user with one allowed identity" do
+      SiteSetting.jaccount_auth_check_all_identities = true
+      result = authenticator.after_authenticate(normal_account_with_blocked_default)
+      expect(result.failed).to be_falsey
+    end
+    it "should block user when only check default identity" do
+      SiteSetting.jaccount_auth_check_all_identities = false
+      result = authenticator.after_authenticate(normal_account_with_blocked_default)
+      expect(result.failed).to be_truthy
     end
   end
 end

@@ -13,6 +13,9 @@ login:
     default: ""
     type: list
     client: false
+  jaccount_auth_check_all_identities: 
+    default: true
+    client: false
   jaccount_auth_block_code_regex:
     default: ""
     client: false

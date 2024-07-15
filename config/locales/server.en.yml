@@ -6,12 +6,14 @@ en:
     jaccount_auth_types_must_have_code: "jAccount whose type is in list must have code"
     jaccount_auth_debug_mode: "output debug info in log, **DO NOT enable unless you know what you are doing**"
     jaccount_display_account_type: "display jAccount account type"
+    jaccount_auth_check_all_identities: "check all jAccount identities, not just the default one"
   jaccount_auth:
     failed_reason:
       blocked_type: "This jAccount cannot login due to its type, your jAccount type %{type} does not allow login. If you have any questions, please contact %{email}."
       blocked_code: "This jAccount cannot login due to its code, the range of your code (%{code}) is not allowed to log in. If you have any questions, please contact %{email}."
       no_code: "Cannot get the code of this jAccount, your jAccount type is %{type}. This may be an unexpected error. If you have any questions, please contact %{email}."
       multiple_user_found: "Error occurred when finding related user, please contact %{email} and attach the error message. Error message: %{error_code}."
+      unknown_error: "Unknown authentication error, please contact %{email}. Your current authentication info is %{code}(%{type})."
     admin_user_details:
       no_jaccount: "No associated jAccount"
       no_identities: "No identity list"
