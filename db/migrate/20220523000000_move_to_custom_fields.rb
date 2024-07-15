@@ -1,3 +1,4 @@
+# frozen_string_literal: true
 class MoveToCustomFields < ActiveRecord::Migration[7.0]
   def change
     plugin_name = "auth-jaccount"

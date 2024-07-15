@@ -1,6 +1,7 @@
+# frozen_string_literal: true
 class RemoveCustomFields < ActiveRecord::Migration[7.0]
   def up
-    UserCustomField.where(name:"auth-jaccount").destroy_all
+    UserCustomField.where(name: "auth-jaccount").destroy_all
   end
 
   def down
