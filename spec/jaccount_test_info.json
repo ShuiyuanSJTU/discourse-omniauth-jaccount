@@ -57,7 +57,7 @@
                 "userType": "student",
                 "isDefault": true,
                 "createDate": 1656000000,
-                "expireDate": "2026-06-30",
+                "expireDate": "3026-06-30",
                 "updateDate": 1697000000,
                 "mgtOrganize": {
                     "id": "03300",
@@ -138,7 +138,14 @@
         },
         "timeZone": 0,
         "userType": "student",
-        "identities": [],
+        "identities": [
+            {
+                "code": "723602910000",
+                "userTypeName": "学生",
+                "userType": "student",
+                "expireDate": "3021-06-30"
+            }
+        ],
         "topOrganize": {
             "id": "60200",
             "name": "教务处"

@@ -118,11 +118,15 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
       raw_info
         .identities
         .to_a
-        .reject do |id|
-          begin
-            Time.parse(id["expireDate"]) < Time.now
-          rescue StandardError
+        .select do |id|
+          if id["expireDate"].nil?
             true
+          else
+            begin
+              Time.parse(id["expireDate"]) > Time.now
+            rescue StandardError
+              false
+            end
           end
         end
         .each do |id|
@@ -193,7 +197,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
       else
         result.failed_reason =
           I18n.t(
-            "jaccount_auth.failed_reason.unknown",
+            "jaccount_auth.failed_reason.unknown_error",
             email: SiteSetting.contact_email,
             code: code,
             type: type
