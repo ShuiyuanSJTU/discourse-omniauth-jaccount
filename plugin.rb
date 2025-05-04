@@ -65,12 +65,17 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     if identities.nil? || !identities.is_a?(Array) || identities.length == 0
       nil
     else
-      query_codes =
-        identities.compact.map { |id| id["code"] }.compact.map { |code| [code: code.to_s].to_json }
+      query_codes = identities.compact.map { |id| id["code"] }.compact
       association_record =
-        UserAssociatedAccount.where(
-          "extra -> 'raw_info' -> 'identities' @> ANY(ARRAY[?]::jsonb[])",
-          query_codes,
+        UserAssociatedAccount.where(provider_name: PROVIDER_NAME).where(
+          # TODO: remove lagacy code after ensure new implementation works
+          # "extra -> 'raw_info' -> 'identities' @> ANY(ARRAY[?]::jsonb[])",
+          # query_codes.map { |code| [code: code.to_s].to_json },
+          "jsonb_path_exists(extra, :path, :vars)",
+          {
+            path: "$.raw_info.identities[*].code ? (@ == $qc[*])",
+            vars: { qc: query_codes }.to_json,
+          },
         )
       User.where(id: association_record.pluck(:user_id))
     end

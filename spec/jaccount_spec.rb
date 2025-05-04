@@ -274,4 +274,85 @@ RSpec.describe Auth::JAccountAuthenticator do
       expect(result.failed).to be_truthy
     end
   end
+
+  describe "#lookup_user_from_code" do
+    def random_code_identity(len = 10)
+      account = normal_account.dup
+      account[:uid] = SecureRandom.hex(len)
+      account[:info][:code] = SecureRandom.hex(len)
+      account[:extra][:raw_info][:identities].each do |identity|
+        identity[:code] = SecureRandom.hex(len)
+      end
+      account
+    end
+
+    before(:example) do
+      5.times do
+        info = random_code_identity
+        UserAssociatedAccount.create!(
+          user: Fabricate(:user),
+          provider_name: "jaccount",
+          provider_uid: info[:uid],
+          extra: info[:extra],
+        )
+      end
+    end
+
+    it "should find correct user" do
+      all_records = UserAssociatedAccount.all.to_a
+      2.times do
+        record = all_records.sample
+        user = authenticator.lookup_user_from_code(record.extra).to_a
+        expect(user).to be_present
+        expect(user.count).to eq(1)
+        expect(user.first.id).to eq(record.user_id)
+      end
+    end
+
+    it "should return none if no user found" do
+      # Change the random string lenghth to ensure no user found
+      info = random_code_identity(11).as_json
+      user = authenticator.lookup_user_from_code(info["extra"]).to_a
+      expect(user).to be_blank
+    end
+
+    it "could find with code" do
+      all_records = UserAssociatedAccount.all.to_a
+      2.times do
+        record = all_records.sample
+        code = record.extra["raw_info"]["identities"].sample["code"]
+        stub_identities = {
+          "raw_info" => {
+            "identities" => [{ "code" => code }, { "code" => SecureRandom.hex(11) }],
+          },
+        }
+        user = authenticator.lookup_user_from_code(stub_identities).to_a
+        expect(user).to be_present
+        expect(user.count).to eq(1)
+        expect(user.first.id).to eq(record.user_id)
+      end
+    end
+
+    it "could find all with code" do
+      # This should not happen, but #lookup_user_from_code should be able to handle this
+      all_records = UserAssociatedAccount.all.to_a
+      2.times do
+        record = all_records.sample(2)
+        code = record.map { |r| r.extra["raw_info"]["identities"].sample["code"] }
+        stub_identities = {
+          "raw_info" => {
+            "identities" => [
+              { "code" => code[0] },
+              { "code" => SecureRandom.hex(11) },
+              { "code" => code[1] },
+            ],
+          },
+        }
+        user = authenticator.lookup_user_from_code(stub_identities).to_a
+        expect(user).to be_present
+        expect(user.count).to eq(2)
+        expect(user.pluck(:id)).to match_array(record.pluck(:user_id))
+      end
+    end
+  end
 end
