@@ -76,9 +76,13 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     end
   end
 
-  def is_blocked_indentity?(type, code)
+  # Checks if a specific identity type or code is blocked.
+  # @param type [String] The type of the identity.
+  # @param code [String] The code of the identity.
+  # @return [Symbol, nil] Returns a symbol indicating the block reason, or nil if not blocked.
+  def is_blocked_identity?(type, code)
     return :type_blocked if SiteSetting.jaccount_auth_block_types.split("|").include?(type)
-    if SiteSetting.jaccount_auth_block_code_regex != ""
+    if SiteSetting.jaccount_auth_block_code_regex.present?
       if SiteSetting.jaccount_auth_types_must_have_code.split("|").include?(type) &&
            code.to_s.strip.empty?
         return :no_code
@@ -88,13 +92,16 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     end
   end
 
+  # Determines if a jAccount is allowed to log in based on raw_info.
+  # @param raw_info [Hash] The raw information of the user.
+  # @return [Array] Returns a boolean indicating if login is allowed and the failure reason if any.
   def is_allowed_jaccount?(raw_info)
     failed_reason = nil
 
-    # 检查默认身份
+    # Check default identity
     code = raw_info["code"].to_s.strip
     type = raw_info["userType"].to_s.strip
-    failed_reason = is_blocked_indentity?(type, code)
+    failed_reason = is_blocked_identity?(type, code)
 
     if failed_reason.nil?
       return true, nil
@@ -102,9 +109,8 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
       return false, failed_reason
     end
 
-    # 开始检查所有身份
-    passed = false
-    valid_identities =
+    # Start checking all identities
+    passed =
       raw_info
         .identities
         .to_a
@@ -119,12 +125,8 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
             end
           end
         end
-        .each do |id|
-          if is_blocked_indentity?(id["userType"], id["code"]).nil?
-            passed = true
-            break
-          end
-        end
+        .map { |id| is_blocked_identity?(id["userType"], id["code"]).nil? }
+        .any?
 
     passed ? [true, nil] : [false, failed_reason]
   end
@@ -135,7 +137,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     # Grap the info we need from OmniAuth
     data = auth_token[:info]
 
-    name = screen_name = data["name"].to_s.strip
+    screen_name = data["name"].to_s.strip
     email = data["email"].to_s.strip
     account = data["account"].to_s.strip
     code = data["code"].to_s.strip
@@ -149,8 +151,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     end
 
     ja_uid = auth_token["uid"]
-    ja_uid = email if ja_uid.to_s.strip.empty? # 集体账号没有 jAcount UID
-    # byebug
+    ja_uid = email if ja_uid.to_s.strip.empty? # Team accounts do not have jAccount UID
     should_allow_login, failed_reason = is_allowed_jaccount?(auth_token[:extra][:raw_info])
     if !should_allow_login
       result.failed = true
@@ -327,7 +328,8 @@ after_initialize do
         .uniq
         .compact
     return valid_identities.join(", ") if valid_identities.length > 0
-    # check if there is an alumni identity
+
+    # Check if there is an alumni identity
     alumni_identities = identities.select { |id| id["userType"] == "alumni" }
     return alumni_identities.pluck("userTypeName").first.to_s if alumni_identities.length > 0
     I18n.t("jaccount_auth.admin_user_details.no_valid_identities") +

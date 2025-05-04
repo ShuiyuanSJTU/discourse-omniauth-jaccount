@@ -205,7 +205,7 @@ RSpec.describe Auth::JAccountAuthenticator do
     end
     it "would invoke lookup_user_from_code" do
       Auth::JAccountAuthenticator.any_instance.expects(:lookup_user_from_code).once.returns([user])
-      result = authenticator.after_authenticate(normal_account)
+      authenticator.after_authenticate(normal_account)
     end
     it "would update user association" do
       result = authenticator.after_authenticate(normal_account)
