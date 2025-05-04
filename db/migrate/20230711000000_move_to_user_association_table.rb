@@ -8,7 +8,7 @@ class MoveToUserAssociationTable < ActiveRecord::Migration[7.0]
           UserAssociatedAccount.find_or_initialize_by(
             provider_name: "jaccount",
             provider_uid: row.value,
-            user_id: row.user_id
+            user_id: row.user_id,
           )
         association.save!
       end

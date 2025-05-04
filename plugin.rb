@@ -8,8 +8,8 @@
 
 enabled_site_setting :jaccount_auth_enabled
 class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
-  PLUGIN_NAME ||= "auth-jaccount".freeze
-  PROVIDER_NAME ||= "jaccount".freeze
+  PLUGIN_NAME = "auth-jaccount".freeze
+  PROVIDER_NAME = "jaccount".freeze
 
   class JAccountStrategy < OmniAuth::Strategies::OAuth2
     option :name, PROVIDER_NAME
@@ -18,7 +18,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
            {
              site: "https://api.sjtu.edu.cn/v1",
              authorize_url: "https://jaccount.sjtu.edu.cn/oauth2/authorize",
-             token_url: "https://jaccount.sjtu.edu.cn/oauth2/token"
+             token_url: "https://jaccount.sjtu.edu.cn/oauth2/token",
            }
 
     option :authorize_params, { scope: "essential" }
@@ -31,15 +31,14 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
         "email" => raw_info["account"] + "@sjtu.edu.cn",
         "name" => raw_info["name"],
         "code" => raw_info["code"],
-        "type" => raw_info["userType"]
+        "type" => raw_info["userType"],
       }
     end
 
     extra { { raw_info: raw_info } }
 
     def raw_info
-      @raw_info ||=
-        access_token.get("https://api.sjtu.edu.cn/v1/me/profile").parsed
+      @raw_info ||= access_token.get("https://api.sjtu.edu.cn/v1/me/profile").parsed
       @raw_info["entities"][0]
     end
 
@@ -67,33 +66,24 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
       nil
     else
       query_codes =
-        identities
-          .compact
-          .map { |id| id["code"] }
-          .compact
-          .map { |code| [code: code.to_s].to_json }
+        identities.compact.map { |id| id["code"] }.compact.map { |code| [code: code.to_s].to_json }
       association_record =
         UserAssociatedAccount.where(
           "extra -> 'raw_info' -> 'identities' @> ANY(ARRAY[?]::jsonb[])",
-          query_codes
+          query_codes,
         )
       User.where(id: association_record.pluck(:user_id))
     end
   end
 
   def is_blocked_indentity?(type, code)
-    if SiteSetting.jaccount_auth_block_types.split("|").include?(type)
-      return :type_blocked
-    end
+    return :type_blocked if SiteSetting.jaccount_auth_block_types.split("|").include?(type)
     if SiteSetting.jaccount_auth_block_code_regex != ""
-      if SiteSetting
-           .jaccount_auth_types_must_have_code
-           .split("|")
-           .include?(type) && code.to_s.strip.empty?
+      if SiteSetting.jaccount_auth_types_must_have_code.split("|").include?(type) &&
+           code.to_s.strip.empty?
         return :no_code
       end
-      blocked_code_regexp =
-        Regexp.new(SiteSetting.jaccount_auth_block_code_regex)
+      blocked_code_regexp = Regexp.new(SiteSetting.jaccount_auth_block_code_regex)
       :code_blocked if code && code.match?(blocked_code_regexp)
     end
   end
@@ -154,15 +144,14 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     provider = auth_token[:provider] || PROVIDER_NAME
     if auth_token[:provider] != PROVIDER_NAME
       Rails.logger.warn(
-        "jaccount provider name not match, #{auth_token[:provider]} != #{PROVIDER_NAME}"
+        "jaccount provider name not match, #{auth_token[:provider]} != #{PROVIDER_NAME}",
       )
     end
 
     ja_uid = auth_token["uid"]
     ja_uid = email if ja_uid.to_s.strip.empty? # 集体账号没有 jAcount UID
     # byebug
-    should_allow_login, failed_reason =
-      is_allowed_jaccount?(auth_token[:extra][:raw_info])
+    should_allow_login, failed_reason = is_allowed_jaccount?(auth_token[:extra][:raw_info])
     if !should_allow_login
       result.failed = true
       case failed_reason
@@ -171,17 +160,15 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
           I18n.t(
             "jaccount_auth.failed_reason.blocked_type",
             email: SiteSetting.contact_email,
-            type: type
+            type: type,
           )
-        Rails.logger.warn(
-          "jaccount login blocked beacause of type `#{type}`,#{data}"
-        )
+        Rails.logger.warn("jaccount login blocked beacause of type `#{type}`,#{data}")
       when :no_code
         result.failed_reason =
           I18n.t(
             "jaccount_auth.failed_reason.no_code",
             email: SiteSetting.contact_email,
-            type: type
+            type: type,
           )
         Rails.logger.warn("jaccount login blocked beacause of no code,#{data}")
       when :code_blocked
@@ -189,31 +176,24 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
           I18n.t(
             "jaccount_auth.failed_reason.blocked_code",
             email: SiteSetting.contact_email,
-            code: code
+            code: code,
           )
-        Rails.logger.warn(
-          "jaccount login blocked beacause of code `#{code}`,#{data}"
-        )
+        Rails.logger.warn("jaccount login blocked beacause of code `#{code}`,#{data}")
       else
         result.failed_reason =
           I18n.t(
             "jaccount_auth.failed_reason.unknown_error",
             email: SiteSetting.contact_email,
             code: code,
-            type: type
+            type: type,
           )
-        Rails.logger.warn(
-          "jaccount login blocked beacause of unknown reason,#{data}"
-        )
+        Rails.logger.warn("jaccount login blocked beacause of unknown reason,#{data}")
       end
     end
 
     # Plugin specific data storage
     association =
-      UserAssociatedAccount.find_or_initialize_by(
-        provider_name: provider,
-        provider_uid: ja_uid
-      )
+      UserAssociatedAccount.find_or_initialize_by(provider_name: provider, provider_uid: ja_uid)
 
     # Check if the user is trying to connect an existing account
     if association.user_id.nil?
@@ -222,8 +202,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
       # try to find by code
       if existing_user.nil?
         association_record_by_code = lookup_user_from_code(auth_token[:extra])
-        if association_record_by_code.nil? ||
-             association_record_by_code.length == 0
+        if association_record_by_code.nil? || association_record_by_code.length == 0
           existing_user = nil
         elsif association_record_by_code.length == 1
           existing_user = association_record_by_code.first
@@ -233,20 +212,17 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
             I18n.t(
               "jaccount_auth.failed_reason.multiple_user_found",
               email: SiteSetting.contact_email,
-              error_code: association_record_by_code.pluck(:id)
+              error_code: association_record_by_code.pluck(:id),
             )
           Rails.logger.warn(
-            "jaccount login failed because of multiple user found,#{association_record_by_code.pluck(:id)},#{data}"
+            "jaccount login failed because of multiple user found,#{association_record_by_code.pluck(:id)},#{data}",
           )
         end
       end
       if !existing_user.nil?
         result.user = existing_user
         association.user = existing_user
-        UserAssociatedAccount.where(
-          provider_name: provider,
-          user_id: existing_user.id
-        ).destroy_all
+        UserAssociatedAccount.where(provider_name: provider, user_id: existing_user.id).destroy_all
       end
     else # existing user
       result.user = User.find_by(id: association.user_id)
@@ -277,7 +253,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     result.extra_data = {
       jaccount_uid: ja_uid,
       jaccount_screen_name: screen_name,
-      jaccount_provider: provider
+      jaccount_provider: provider,
     }
     result
   end
@@ -287,7 +263,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     association =
       UserAssociatedAccount.find_or_initialize_by(
         provider_name: data[:jaccount_provider],
-        provider_uid: data[:jaccount_uid]
+        provider_uid: data[:jaccount_uid],
       )
     association.user = user
     association.save!
@@ -301,11 +277,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
   end
 
   def description_for_user(user)
-    association =
-      UserAssociatedAccount.find_by(
-        provider_name: PROVIDER_NAME,
-        user_id: user.id
-      )
+    association = UserAssociatedAccount.find_by(provider_name: PROVIDER_NAME, user_id: user.id)
     association ? association.provider_uid : ""
   end
 
@@ -320,23 +292,20 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
   end
 end
 
-auth_provider title: "with jAccount",
-              authenticator: ::Auth::JAccountAuthenticator.new
+auth_provider title: "with jAccount", authenticator: ::Auth::JAccountAuthenticator.new
 
 after_initialize do
   add_to_serializer(
     :admin_detailed_user,
     :jaccount_type,
-    include_condition: -> { SiteSetting.jaccount_display_account_type }
+    include_condition: -> { SiteSetting.jaccount_display_account_type },
   ) do
     association =
       UserAssociatedAccount.find_by(
         provider_name: ::Auth::JAccountAuthenticator::PROVIDER_NAME,
-        user_id: object.id
+        user_id: object.id,
       )
-    if association.nil?
-      return I18n.t("jaccount_auth.admin_user_details.no_jaccount")
-    end
+    return I18n.t("jaccount_auth.admin_user_details.no_jaccount") if association.nil?
     identities = association.extra.dig("raw_info", "identities")
     if identities.nil? || !identities.is_a?(Array) || identities.length == 0
       return(
@@ -360,9 +329,7 @@ after_initialize do
     return valid_identities.join(", ") if valid_identities.length > 0
     # check if there is an alumni identity
     alumni_identities = identities.select { |id| id["userType"] == "alumni" }
-    if alumni_identities.length > 0
-      return alumni_identities.pluck("userTypeName").first.to_s
-    end
+    return alumni_identities.pluck("userTypeName").first.to_s if alumni_identities.length > 0
     I18n.t("jaccount_auth.admin_user_details.no_valid_identities") +
       "(#{association.extra.dig("raw_info", "userType")})"
   end
