@@ -6,3 +6,8 @@ en:
     user:
       jaccount_type:
         title: "jAccount Type"
+  admin_js:
+    admin:
+      site_settings:
+        categories:
+          discourse-omniauth-jaccount: "jAccount Auth"

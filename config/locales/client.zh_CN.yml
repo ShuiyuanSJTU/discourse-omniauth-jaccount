@@ -6,3 +6,8 @@ zh_CN:
     user:
       jaccount_type:
         title: "jAccount类型"
+  admin_js:
+    admin:
+      site_settings:
+        categories:
+          discourse-omniauth-jaccount: "jAccount 登录"
