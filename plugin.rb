@@ -151,7 +151,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     provider = auth_token[:provider] || PROVIDER_NAME
     if auth_token[:provider] != PROVIDER_NAME
       Rails.logger.warn(
-        "jaccount provider name not match, #{auth_token[:provider]} != #{PROVIDER_NAME}",
+        "jaccount provider name does not match: #{auth_token[:provider]} != #{PROVIDER_NAME}",
       )
     end
 
@@ -168,7 +168,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
             email: SiteSetting.contact_email,
             type: type,
           )
-        Rails.logger.warn("jaccount login blocked beacause of type `#{type}`,#{data}")
+        Rails.logger.warn("jaccount login blocked because of type `#{type}`: #{data}")
       when :no_code
         result.failed_reason =
           I18n.t(
@@ -176,7 +176,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
             email: SiteSetting.contact_email,
             type: type,
           )
-        Rails.logger.warn("jaccount login blocked beacause of no code,#{data}")
+        Rails.logger.warn("jaccount login blocked because of missing code: #{data}")
       when :code_blocked
         result.failed_reason =
           I18n.t(
@@ -184,7 +184,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
             email: SiteSetting.contact_email,
             code: code,
           )
-        Rails.logger.warn("jaccount login blocked beacause of code `#{code}`,#{data}")
+        Rails.logger.warn("jaccount login blocked because of code `#{code}`: #{data}")
       else
         result.failed_reason =
           I18n.t(
@@ -193,7 +193,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
             code: code,
             type: type,
           )
-        Rails.logger.warn("jaccount login blocked beacause of unknown reason,#{data}")
+        Rails.logger.warn("jaccount login blocked because of unknown reason: #{data}")
       end
     end
 
@@ -221,7 +221,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
               error_code: association_record_by_code.pluck(:id),
             )
           Rails.logger.warn(
-            "jaccount login failed because of multiple user found,#{association_record_by_code.pluck(:id)},#{data}",
+            "jaccount login failed because multiple users found: #{association_record_by_code.pluck(:id)}, #{data}",
           )
         end
       end
