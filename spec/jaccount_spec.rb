@@ -28,6 +28,15 @@ RSpec.describe Auth::JAccountAuthenticator do
   end
 
   let(:normal_account) { jaccount_test_auth_token("normal_user") }
+  let(:alumni_account) do
+    jaccount_test_auth_token("normal_user").tap do |account|
+      alumni_identity =
+        account.extra.raw_info.identities.find { |identity| identity.userType == "alumni" }
+      account.info.type = "alumni"
+      account.extra.raw_info.userType = "alumni"
+      account.extra.raw_info.identities = [alumni_identity]
+    end
+  end
   let(:team_account) { jaccount_test_auth_token("team_user") }
   let(:type_blocked_account) { jaccount_test_auth_token("should_block_type_user") }
   let(:code_blocked_account) { jaccount_test_auth_token("should_block_code_user") }
@@ -272,6 +281,134 @@ RSpec.describe Auth::JAccountAuthenticator do
       SiteSetting.jaccount_auth_check_all_identities = false
       result = authenticator.after_authenticate(normal_account_with_blocked_default)
       expect(result.failed).to be_truthy
+    end
+  end
+
+  describe "dormant alumni tracking" do
+    before do
+      SiteSetting.jaccount_dormant_alumni_enabled = true
+      SiteSetting.jaccount_dormant_alumni_inactive_days = 180
+    end
+
+    it "marks an alumni user returning after the configured period" do
+      freeze_time
+      association =
+        UserAssociatedAccount.create!(
+          user:,
+          provider_name: "jaccount",
+          provider_uid: alumni_account.uid,
+          last_used: 181.days.ago,
+        )
+
+      result = authenticator.after_authenticate(alumni_account)
+
+      expect(result.user).to eq(user)
+      expect(
+        user.reload.custom_fields[
+          Auth::JAccountAuthenticator::DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD
+        ],
+      ).to eq(Time.zone.now.iso8601)
+      expect(association.reload.last_used).to eq_time(Time.zone.now)
+    end
+
+    it "uses the previous association when the account is rebound by email" do
+      freeze_time
+      user.update!(email: alumni_account.info.email)
+      UserAssociatedAccount.create!(
+        user:,
+        provider_name: "jaccount",
+        provider_uid: "previous-jaccount-uid",
+        last_used: 181.days.ago,
+      )
+
+      result = authenticator.after_authenticate(alumni_account)
+
+      expect(result.user).to eq(user)
+      expect(
+        user.reload.custom_fields[
+          Auth::JAccountAuthenticator::DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD
+        ],
+      ).to eq(Time.zone.now.iso8601)
+      expect(UserAssociatedAccount.find_by(provider_name: "jaccount", user:).provider_uid).to eq(
+        alumni_account.uid,
+      )
+    end
+
+    it "does not mark an alumni user at the inactivity boundary" do
+      freeze_time Time.zone.now.change(usec: 0)
+      UserAssociatedAccount.create!(
+        user:,
+        provider_name: "jaccount",
+        provider_uid: alumni_account.uid,
+        last_used: 180.days.ago,
+      )
+
+      authenticator.after_authenticate(alumni_account)
+
+      expect(
+        user.reload.custom_fields[
+          Auth::JAccountAuthenticator::DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD
+        ],
+      ).to be_nil
+    end
+
+    it "does not mark a user with an active student identity" do
+      UserAssociatedAccount.create!(
+        user:,
+        provider_name: "jaccount",
+        provider_uid: normal_account.uid,
+        last_used: 181.days.ago,
+      )
+
+      authenticator.after_authenticate(normal_account)
+
+      expect(
+        user.reload.custom_fields[
+          Auth::JAccountAuthenticator::DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD
+        ],
+      ).to be_nil
+    end
+
+    it "does not track dormant alumni when the feature is disabled" do
+      SiteSetting.jaccount_dormant_alumni_enabled = false
+      UserAssociatedAccount.create!(
+        user:,
+        provider_name: "jaccount",
+        provider_uid: alumni_account.uid,
+        last_used: 181.days.ago,
+      )
+
+      authenticator.after_authenticate(alumni_account)
+
+      expect(
+        user.reload.custom_fields[
+          Auth::JAccountAuthenticator::DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD
+        ],
+      ).to be_nil
+    end
+
+    it "does not mark a failed login or update its last used time" do
+      freeze_time
+      SiteSetting.jaccount_auth_block_types = "alumni"
+      SiteSetting.jaccount_auth_check_all_identities = false
+      previous_last_used = 181.days.ago
+      association =
+        UserAssociatedAccount.create!(
+          user:,
+          provider_name: "jaccount",
+          provider_uid: alumni_account.uid,
+          last_used: previous_last_used,
+        )
+
+      result = authenticator.after_authenticate(alumni_account)
+
+      expect(result).to be_failed
+      expect(
+        user.reload.custom_fields[
+          Auth::JAccountAuthenticator::DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD
+        ],
+      ).to be_nil
+      expect(association.reload.last_used).to eq_time(previous_last_used)
     end
   end
 

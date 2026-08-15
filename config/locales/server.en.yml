@@ -7,6 +7,8 @@ en:
     jaccount_auth_debug_mode: "output debug info in log, **DO NOT enable unless you know what you are doing**"
     jaccount_display_account_type: "display jAccount account type"
     jaccount_auth_check_all_identities: "check all jAccount identities, not just the default one"
+    jaccount_dormant_alumni_enabled: "Track alumni accounts that return after a long period without using jAccount to sign in"
+    jaccount_dormant_alumni_inactive_days: "Number of days since the previous jAccount sign-in before a returning alumni account is marked as dormant. Only used when {{setting:jaccount_dormant_alumni_enabled}} is enabled."
   jaccount_auth:
     failed_reason:
       blocked_type: "This jAccount cannot login due to its type, your jAccount type %{type} does not allow login. If you have any questions, please contact %{email}."

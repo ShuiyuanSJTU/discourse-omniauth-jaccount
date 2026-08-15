@@ -12,6 +12,7 @@ enabled_site_setting :jaccount_auth_enabled
 class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
   PLUGIN_NAME = "auth-jaccount".freeze
   PROVIDER_NAME = "jaccount".freeze
+  DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD = "jaccount_dormant_alumni_returned_at"
 
   class JAccountStrategy < OmniAuth::Strategies::OAuth2
     option :name, PROVIDER_NAME
@@ -140,6 +141,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
 
   def after_authenticate(auth_token)
     result = Auth::Result.new
+    authenticated_at = Time.zone.now
 
     # Grap the info we need from OmniAuth
     data = auth_token[:info]
@@ -202,6 +204,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
     # Plugin specific data storage
     association =
       UserAssociatedAccount.find_or_initialize_by(provider_name: provider, provider_uid: ja_uid)
+    previous_last_used = association.last_used
 
     # Check if the user is trying to connect an existing account
     if association.user_id.nil?
@@ -228,6 +231,10 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
         end
       end
       if !existing_user.nil?
+        previous_last_used ||=
+          UserAssociatedAccount.where(provider_name: provider, user_id: existing_user.id).maximum(
+            :last_used,
+          )
         result.user = existing_user
         association.user = existing_user
         UserAssociatedAccount.where(provider_name: provider, user_id: existing_user.id).destroy_all
@@ -238,7 +245,7 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
 
     association.info = auth_token[:info] || {}
     association.extra = auth_token[:extra] || {}
-    association.last_used = Time.zone.now
+    association.last_used = authenticated_at unless result.failed
 
     association.save!
 
@@ -253,6 +260,13 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
       result.user = nil
       return result
     end
+
+    mark_dormant_alumni_return(
+      result.user,
+      raw_info: auth_token.dig(:extra, :raw_info),
+      previous_last_used:,
+      authenticated_at:,
+    )
 
     result.name ||= account
     result.username = account
@@ -275,6 +289,19 @@ class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
       )
     association.user = user
     association.save!
+  end
+
+  def mark_dormant_alumni_return(user, raw_info:, previous_last_used:, authenticated_at:)
+    return unless SiteSetting.jaccount_dormant_alumni_enabled
+    return if user.nil? || previous_last_used.nil?
+    return unless ::JAccountAuth::Identity.new(raw_info).alumni?
+    if previous_last_used >=
+         authenticated_at - SiteSetting.jaccount_dormant_alumni_inactive_days.days
+      return
+    end
+
+    user.custom_fields[DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD] = authenticated_at.iso8601
+    user.save_custom_fields
   end
 
   def register_middleware(omniauth)
@@ -303,6 +330,11 @@ end
 auth_provider title: "with jAccount", authenticator: ::Auth::JAccountAuthenticator.new
 
 after_initialize do
+  register_user_custom_field_type(
+    ::Auth::JAccountAuthenticator::DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD,
+    :string,
+  )
+
   add_to_serializer(
     :admin_detailed_user,
     :jaccount_type,
