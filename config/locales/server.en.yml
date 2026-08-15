@@ -7,8 +7,9 @@ en:
     jaccount_auth_debug_mode: "output debug info in log, **DO NOT enable unless you know what you are doing**"
     jaccount_display_account_type: "display jAccount account type"
     jaccount_auth_check_all_identities: "check all jAccount identities, not just the default one"
-    jaccount_dormant_alumni_enabled: "Track alumni accounts that return after a long period without using jAccount to sign in"
+    jaccount_dormant_alumni_enabled: "Require staff approval for new public topics from alumni accounts that return after a long period without using jAccount to sign in"
     jaccount_dormant_alumni_inactive_days: "Number of days since the previous jAccount sign-in before a returning alumni account is marked as dormant. Only used when {{setting:jaccount_dormant_alumni_enabled}} is enabled."
+    jaccount_dormant_alumni_review_replies: "Also require staff approval for replies from marked alumni accounts. New public topics are always reviewed when {{setting:jaccount_dormant_alumni_enabled}} is enabled."
   jaccount_auth:
     failed_reason:
       blocked_type: "This jAccount cannot login due to its type, your jAccount type %{type} does not allow login. If you have any questions, please contact %{email}."
@@ -20,3 +21,6 @@ en:
       no_jaccount: "No associated jAccount"
       no_identities: "No identity list"
       no_valid_identities: "No valid identity"
+  reviewables:
+    reasons:
+      jaccount_dormant_alumni: "This alumni account returned after a long period without signing in, so its public post requires staff approval. See %{link}."

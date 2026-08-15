@@ -7,8 +7,9 @@ zh_CN:
     jaccount_auth_debug_mode: "在日志中输出调试信息，**除非你知道自己在做什么，否则请勿开启**"
     jaccount_display_account_type: "在用户详情页显示 jAccount 账号类型"
     jaccount_auth_check_all_identities: "检查所有 jAccount 身份，而不仅仅是默认身份"
-    jaccount_dormant_alumni_enabled: "标记长期未使用 jAccount 登录后再次登录的校友帐号"
-    jaccount_dormant_alumni_inactive_days: "校友帐号距离上次 jAccount 登录达到此天数后，将被标记为长期未登录。仅在启用 {{setting:jaccount_dormant_alumni_enabled}} 时使用。"
+    jaccount_dormant_alumni_enabled: "长期未使用 jAccount 登录的校友帐号重新登录后，其新公开主题需经管理人员审核"
+    jaccount_dormant_alumni_inactive_days: "校友帐号距离上次 jAccount 登录超过此天数后，将被标记为长期未登录。仅在启用 {{setting:jaccount_dormant_alumni_enabled}} 时使用。"
+    jaccount_dormant_alumni_review_replies: "同时审核已标记校友帐号发布的回复。启用 {{setting:jaccount_dormant_alumni_enabled}} 后，新公开主题始终需要审核。"
   jaccount_auth:
     failed_reason:
       blocked_type: "当前 jAccount 账号身份不可登录，您的身份%{type}不允许登录，如果您有任何疑问，请联系%{email}。部分 jAccount 账号可能拥有多个身份，请参考网信中心的教程进行身份切换：https://net.sjtu.edu.cn/info/1188/2647.htm。"
@@ -19,3 +20,6 @@ zh_CN:
       no_jaccount: "无关联 jAccount"
       no_identities: "无身份列表"
       no_valid_identities: "无有效身份"
+  reviewables:
+    reasons:
+      jaccount_dormant_alumni: "该校友帐号在长期未登录后重新登录，其公开帖子需要管理人员审核。请查看 %{link}。"

@@ -7,12 +7,13 @@
 # url: https://github.com/ShuiyuanSJTU/discourse-omniauth-jaccount
 
 require_relative "lib/jaccount_auth/identity"
+require_relative "lib/jaccount_auth/dormant_alumni"
 
 enabled_site_setting :jaccount_auth_enabled
 class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
   PLUGIN_NAME = "auth-jaccount".freeze
   PROVIDER_NAME = "jaccount".freeze
-  DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD = "jaccount_dormant_alumni_returned_at"
+  DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD = ::JAccountAuth::DormantAlumni::RETURNED_AT_CUSTOM_FIELD
 
   class JAccountStrategy < OmniAuth::Strategies::OAuth2
     option :name, PROVIDER_NAME
@@ -330,10 +331,22 @@ end
 auth_provider title: "with jAccount", authenticator: ::Auth::JAccountAuthenticator.new
 
 after_initialize do
+  allow_new_queued_post_payload_attribute(::JAccountAuth::DormantAlumni::QUEUED_MARKER_PAYLOAD)
+  add_reviewable_score_link(
+    ::JAccountAuth::DormantAlumni::REVIEWABLE_REASON,
+    "jaccount_dormant_alumni_enabled",
+  )
+
   register_user_custom_field_type(
     ::Auth::JAccountAuthenticator::DORMANT_ALUMNI_RETURNED_AT_CUSTOM_FIELD,
     :string,
   )
+
+  NewPostManager.singleton_class.prepend(::JAccountAuth::DormantAlumni::NewPostManagerExtension)
+
+  on(:reviewable_transitioned_to) do |new_status, reviewable|
+    ::JAccountAuth::DormantAlumni.clear_marker_after_approval(reviewable) if new_status == :approved
+  end
 
   add_to_serializer(
     :admin_detailed_user,

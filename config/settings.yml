@@ -33,3 +33,10 @@ discourse-omniauth-jaccount:
       - jaccount_dormant_alumni_enabled
     depends_behavior: hidden
     dependent_setting_display: inline
+  jaccount_dormant_alumni_review_replies:
+    default: false
+    client: false
+    depends_on:
+      - jaccount_dormant_alumni_enabled
+    depends_behavior: hidden
+    dependent_setting_display: inline
