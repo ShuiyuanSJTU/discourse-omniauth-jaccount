@@ -6,6 +6,8 @@
 # authors: Rong Cai(feynixs), Jiajun Du, pangbo
 # url: https://github.com/ShuiyuanSJTU/discourse-omniauth-jaccount
 
+require_relative "lib/jaccount_auth/identity"
+
 enabled_site_setting :jaccount_auth_enabled
 class ::Auth::JAccountAuthenticator < ::Auth::Authenticator
   PLUGIN_NAME = "auth-jaccount".freeze
@@ -312,32 +314,15 @@ after_initialize do
         user_id: object.id,
       )
     return I18n.t("jaccount_auth.admin_user_details.no_jaccount") if association.nil?
-    identities = association.extra.dig("raw_info", "identities")
-    if identities.nil? || !identities.is_a?(Array) || identities.length == 0
-      return(
-        I18n.t("jaccount_auth.admin_user_details.no_identities") +
-          "(#{association.extra.dig("raw_info", "userType")})"
-      )
-    end
-    valid_identities =
-      identities
-        .reject { |id| id["expireDate"].nil? }
-        .reject do |id|
-          begin
-            Time.parse(id["expireDate"]) < Time.now
-          rescue StandardError
-            true
-          end
-        end
-        .pluck("userTypeName")
-        .uniq
-        .compact
-    return valid_identities.join(", ") if valid_identities.length > 0
+    identity = ::JAccountAuth::Identity.new(association.extra.dig("raw_info"))
 
-    # Check if there is an alumni identity
-    alumni_identities = identities.select { |id| id["userType"] == "alumni" }
-    return alumni_identities.pluck("userTypeName").first.to_s if alumni_identities.length > 0
-    I18n.t("jaccount_auth.admin_user_details.no_valid_identities") +
-      "(#{association.extra.dig("raw_info", "userType")})"
+    if identity.state == :no_identities
+      return(I18n.t("jaccount_auth.admin_user_details.no_identities") + "(#{identity.user_type})")
+    end
+
+    return identity.valid_identity_names.join(", ") if identity.state == :valid
+    return identity.alumni_identity_name.to_s if identity.alumni?
+
+    I18n.t("jaccount_auth.admin_user_details.no_valid_identities") + "(#{identity.user_type})"
   end
 end
